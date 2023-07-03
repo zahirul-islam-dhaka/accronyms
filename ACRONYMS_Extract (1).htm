@@ -1,0 +1,186 @@
+
+<!-- saved from url=(0061)https://www.thedoctools.com/downloads/basACRONYMS_Extract.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"></head><body style=""><map name=""><pre class="macrocode">
+Sub ExtractACRONYMSToNewDocument()
+
+<span style="color:#717cab">    '=========================</span>
+<span style="color:#717cab">    'Macro created 2008 by Lene Fredborg, DocTools - www.thedoctools.com</span>
+<span style="color:#717cab">    'THIS MACRO IS COPYRIGHT. YOU ARE WELCOME TO USE THE MACRO BUT YOU MUST KEEP THE LINE ABOVE.</span>
+<span style="color:#717cab">    'YOU ARE NOT ALLOWED TO PUBLISH THE MACRO AS YOUR OWN, IN WHOLE OR IN PART.</span>    
+<span style="color:#717cab">    '=========================</span>
+<span style="color:#717cab">    'The macro creates a new document,</span>
+<span style="color:#717cab">    'finds all words consisting of 3 or more uppercase letters</span>
+<span style="color:#717cab">    'in the active document and inserts the words</span>
+<span style="color:#717cab">    'in column 1 of a 3-column table in the new document</span>
+<span style="color:#717cab">    'Each acronym is added only once</span>
+<span style="color:#717cab">    'Use column 2 for definitions</span>
+<span style="color:#717cab">    'Page number of first occurrence is added by the macro in column 3</span>
+    
+<span style="color:#717cab">    'Minor adjustments are made to the styles used</span>
+<span style="color:#717cab">    'You may need to change the style settings and table layout to fit your needs</span>
+<span style="color:#717cab">    '=========================</span>
+
+    Dim oDoc_Source As Document
+    Dim oDoc_Target As Document
+    Dim strListSep As String
+    Dim strAcronym As String
+    Dim oTable As Table
+    Dim oRange As Range
+    Dim n As Long
+    Dim strAllFound As String
+    Dim Title As String
+    Dim Msg As String
+
+    Title = "Extract Acronyms to New Document"
+    
+<span style="color:#717cab">    'Show msg - stop if user does not click Yes</span>
+    Msg = "This macro finds all words consisting of 3 or more " &amp; _
+        "uppercase letters and extracts the words to a table " &amp; _
+        "in a new document where you can add definitions." &amp; vbCr &amp; vbCr &amp; _
+        "Do you want to continue?"
+
+    If MsgBox(Msg, vbYesNo + vbQuestion, Title) &lt;&gt; vbYes Then
+        Exit Sub
+    End If
+    
+    Application.ScreenUpdating = False
+    
+<span style="color:#717cab">    'Find the list separator from international settings</span>
+<span style="color:#717cab">    'May be a comma or semicolon depending on the country</span>
+    strListSep = Application.International(wdListSeparator)
+    
+<span style="color:#717cab">    'Start a string to be used for storing names of acronyms found</span>
+    strAllFound = "#"
+    
+    Set oDoc_Source = ActiveDocument
+    
+<span style="color:#717cab">    'Create new document for acronyms</span>
+    Set oDoc_Target = Documents.Add
+    
+    With oDoc_Target
+<span style="color:#717cab">        'Make sure document is empty</span>
+        .Range = ""
+    
+<span style="color:#717cab">        'Insert info in header - change date format as you wish</span>
+        .PageSetup.TopMargin = CentimetersToPoints(3)
+        .Sections(1).Headers(wdHeaderFooterPrimary).Range.Text = _
+            "Acronyms extracted from: " &amp; oDoc_Source.FullName &amp; vbCr &amp; _
+            "Created by: " &amp; Application.UserName &amp; vbCr &amp; _
+            "Creation date: " &amp; Format(Date, "MMMM d, yyyy")
+                
+<span style="color:#717cab">        'Adjust the Normal style and Header style</span>
+        With .Styles(wdStyleNormal)
+            .Font.Name = "Arial"
+            .Font.Size = 10
+            .ParagraphFormat.LeftIndent = 0
+            .ParagraphFormat.SpaceAfter = 6
+        End With
+    
+        With .Styles(wdStyleHeader)
+            .Font.Size = 8
+            .ParagraphFormat.SpaceAfter = 0
+        End With
+        
+<span style="color:#717cab">        'Insert a table with room for acronym and definition</span>
+        Set oTable = .Tables.Add(Range:=.Range, NumRows:=2, NumColumns:=3)
+        With oTable
+<span style="color:#717cab">            'Format the table a bit</span>
+<span style="color:#717cab">            'Insert headings</span>
+            .Range.Style = wdStyleNormal
+            .AllowAutoFit = False
+            
+            .Cell(1, 1).Range.Text = "Acronym"
+            .Cell(1, 2).Range.Text = "Definition"
+            .Cell(1, 3).Range.Text = "Page"
+<span style="color:#717cab">            'Set row as heading row</span>
+            .Rows(1).HeadingFormat = True
+            .Rows(1).Range.Font.Bold = True
+            .PreferredWidthType = wdPreferredWidthPercent
+            .Columns(1).PreferredWidth = 20
+            .Columns(2).PreferredWidth = 70
+            .Columns(3).PreferredWidth = 10
+        End With
+    End With
+    
+    With oDoc_Source
+        Set oRange = .Range
+        
+        n = 1 'used to count below
+        
+        With oRange.Find
+<span style="color:#717cab">            'Use wildcard search to find strings consisting of 3 or more uppercase letters</span>
+<span style="color:#717cab">            'Set the search conditions</span>
+<span style="color:#717cab">            'NOTE: If you want to find acronyms with e.g. 2 or more letters,</span>
+<span style="color:#717cab">            'change 3 to 2 in the line below</span>
+            .Text = "&lt;[A-Z]{3" &amp; strListSep &amp; "}&gt;"
+            .Forward = True
+            .Wrap = wdFindStop
+            .Format = False
+            .MatchCase = True
+            .MatchWildcards = True
+            
+<span style="color:#717cab">            'Perform the search</span>
+            Do While .Execute
+<span style="color:#717cab">                'Continue while found</span>
+                strAcronym = oRange
+<span style="color:#717cab">                'Insert in target doc</span>
+                
+<span style="color:#717cab">                'If strAcronym is already in strAllFound, do not add again</span>
+                If InStr(1, strAllFound, "#" &amp; strAcronym &amp; "#") = 0 Then
+<span style="color:#717cab">                    'Add new row in table from second acronym</span>
+                    If n &gt; 1 Then oTable.Rows.Add
+<span style="color:#717cab">                    'Was not found before</span>
+                    strAllFound = strAllFound &amp; strAcronym &amp; "#"
+                    
+<span style="color:#717cab">                    'Insert in column 1 in oTable</span>
+<span style="color:#717cab">                    'Compensate for heading row</span>
+                    With oTable
+                        .Cell(n + 1, 1).Range.Text = strAcronym
+<span style="color:#717cab">                        'Insert page number in column 3</span>
+                        .Cell(n + 1, 3).Range.Text = oRange.Information(wdActiveEndPageNumber)
+                    End With
+                    
+                    n = n + 1
+                End If
+            Loop
+        End With
+    End With
+    
+<span style="color:#717cab">    'Sort the acronyms alphabetically - skip if only 1 found</span>
+    If n &gt; 2 Then
+        With Selection
+            .Sort ExcludeHeader:=True, FieldNumber:="Column 1", SortFieldType _
+                :=wdSortFieldAlphanumeric, SortOrder:=wdSortOrderAscending
+            
+<span style="color:#717cab">            'Go to start of document</span>
+            .HomeKey (wdStory)
+        End With
+    End If
+        
+    Application.ScreenUpdating = True
+    
+<span style="color:#717cab">    'If no acronyms found, show msg and close new document without saving</span>
+<span style="color:#717cab">    'Else keep open</span>
+    If n = 1 Then
+        Msg = "No acronyms found."
+        oDoc_Target.Close savechanges:=wdDoNotSaveChanges
+    Else
+        Msg = "Finished extracting " &amp; n - 1 &amp; " acronymn(s) to a new document."
+    End If
+    
+    MsgBox Msg, vbOKOnly, Title
+    
+<span style="color:#717cab">    'Clean up</span>
+    Set oRange = Nothing
+    Set oDoc_Source = Nothing
+    Set oDoc_Target = Nothing
+    Set oTable = Nothing
+    
+End Sub
+
+
+</pre></map>
+
+<!-- ******************************************* -->
+
+<!--#include file="html_macro_end.htm" --></body></html>
